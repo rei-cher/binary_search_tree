@@ -31,31 +31,186 @@ struct bst
 };
 
 // TODO: static function prototypes here
+static node_t * node_find(node_t * p_root, void * p_data);
+static node_t * find_smallest(node_t * p_node);
+static void insert_left(node_t * p_node, void * p_data);
+static void insert_right(node_t * p_node, void * p_data);
 
 bst_t * bst_create(comp_f p_comp, free_f p_free)
 {
-    (void)p_comp;
-    (void)p_free;
-    return NULL;
+	bst_t * new_bst = NULL;
+
+	if (NULL == p_comp)
+	{
+		goto END;
+	}
+
+	new_bst = calloc(1, sizeof(bst_t));
+
+	if (NULL == new_bst)
+	{
+		goto END;
+	}
+
+	new_bst->p_root = NULL;
+	new_bst->p_comp = p_comp;
+	new_bst->p_free = p_free;
+	new_bst->size = 0;
+
+END:
+	return new_bst;
 }
 
 void bst_destroy(bst_t ** pp_bst)
 {
-    (void)pp_bst;
+	if ((NULL == pp_bst) ||
+		(NULL == (* pp_bst)))
+	{
+		goto END;
+	}
+
+	if (0 != (* pp_bst)->size)
+	{
+		bst_remove((* pp_bst), (* pp_bst)->p_root->p_data);
+	}
+
+	free(* pp_bst);
+	(* pp_bst) = NULL;
+
+END:
+	return;
 }
 
 int bst_insert(bst_t * p_bst, void * p_data)
 {
-    (void)p_bst;
-    (void)p_data;
-    return EXIT_FAILURE;
+	int SUCCESS = 1;
+
+	if ((NULL == p_bst) ||
+		(NULL == p_data) ||
+		(NULL != node_find(p_bst->p_root, p_data)))
+	{
+		goto END;
+	}
+	
+	node_t * p_tmp = NULL;
+	node_t * p_current = p_bst->p_root;
+
+	while (NULL != p_current)
+	{
+		if (p_current->p_data > p_data)
+		{
+			p_tmp = p_current;
+			p_current = p_current->p_left;
+		}
+		else
+		{
+			p_tmp = p_current;
+			p_current = p_current->p_right;
+		}
+	}
+
+	if (p_tmp->p_data > p_data)
+	{
+		insert_left(p_tmp, p_data);
+	}
+	else
+	{
+		insert_right(p_tmp, p_data);
+	}
+
+	SUCCESS = 0;
+	
+END:
+	return SUCCESS;
 }
 
 void * bst_remove(bst_t * p_bst, void * p_data)
 {
-    (void)p_bst;
-    (void)p_data;
-    return NULL;
+	node_t * p_found = node_find(p_bst->p_root, p_data);
+	int state = 0; // 0->right, 1->left
+
+	if ((NULL == p_bst) ||
+		(NULL == p_data))
+	{
+		goto END;
+	}
+
+	if (NULL == p_found)
+	{
+		goto END;
+	}
+
+	node_t * p_current = p_bst->p_root;
+
+	while ((p_current->p_left != p_found) ||
+		   (p_current->p_right != p_found))
+	{
+		if (p_current->p_data > p_data)
+		{
+			p_current = p_current->p_left;
+			state = 1;
+		}
+		else
+		{
+			p_current = p_current->p_right;
+		}
+	}
+
+	if ((NULL == p_found->p_right) &&
+		(NULL == p_found->p_left))
+	{
+		if (1 == state)
+		{
+			p_current->p_left = NULL;
+		}
+		else
+		{
+			p_current->p_right = NULL;
+			p_bst->p_free(p_found->p_data);
+			free(p_found);
+		}
+	}
+	else if ((NULL == p_found->p_right) &&
+			 (NULL != p_found->p_left))
+	{
+		if (1 == state)
+		{
+			p_current->p_left = p_found->p_left;
+			p_bst->p_free(p_found->p_data);
+			free(p_found);
+		}
+		else
+		{
+			p_current->p_right = p_found->p_left;
+			p_bst->p_free(p_found->p_data);
+			free(p_found);
+		}
+	}
+	else
+	{
+		node_t * p_smallest = find_smallest(p_found->p_right);
+		if (1 == state)
+		{
+			p_current->p_right = p_smallest;
+			p_smallest->p_right = p_found->p_right;
+			p_smallest->p_left = p_found->p_left;
+
+			p_bst->p_free(p_found->p_data);
+			free(p_found);
+		}
+		else
+		{
+			p_current->p_left = p_smallest;
+			p_smallest->p_right = p_found->p_right;
+			p_smallest->p_left = p_found->p_left;
+
+			p_bst->p_free(p_found->p_data);
+			free(p_found);
+		}
+	}
+
+END:
+	return p_found;
 }
 
 void bst_inorder_print(bst_t * p_bst, print_f p_print)
@@ -78,5 +233,111 @@ int bst_size(bst_t * p_bst)
 }
 
 // TODO: static function definitions here
+static node_t * node_find(node_t * p_root, void * p_data)
+{
+    node_t * p_found = NULL;
+	
+	if ((NULL == p_root) ||
+		(NULL == p_data))
+	{
+		goto END;
+	}
+	
+	node_t * p_current = p_root;
 
+	if (p_current->p_data == p_data)
+	{
+		p_found = p_current;
+		goto END;
+	}
+
+	if (p_current->p_data > p_data)
+	{
+		p_current = p_current->p_left;
+	}
+	else
+	{
+		p_current = p_current->p_right;
+	}
+
+	while ((NULL == p_found) ||
+		   (NULL == p_current))
+	{
+		node_find(p_current, p_data);
+	}
+
+END:
+	return p_found;
+}
+
+static void insert_right(node_t * p_node, void * p_data)
+{
+	if ((NULL == p_node) ||
+		(NULL == p_data))
+	{
+		goto END;
+	}
+
+	node_t * new_node = calloc(1, sizeof(node_t));
+
+	if (NULL == new_node)
+	{
+		goto END;
+	}
+
+	new_node->p_data = p_data;
+	new_node->p_left = NULL;
+	new_node->p_right = NULL;
+
+	p_node->p_right = new_node;
+
+END:
+	return;
+}
+
+static void insert_left(node_t * p_node, void * p_data)
+{
+	if ((NULL == p_node) ||
+		(NULL == p_data))
+	{
+		goto END;
+	}
+
+	node_t * new_node = calloc(1, sizeof(node_t));
+
+	if (NULL == new_node)
+	{
+		goto END;
+	}
+
+	new_node->p_data = p_data;
+	new_node->p_left = NULL;
+	new_node->p_right = NULL;
+
+	p_node->p_left = new_node;
+
+END:
+	return;
+}
+
+static node_t * find_smallest(node_t * p_node)
+{
+	node_t * p_smallest = NULL;
+
+	if (NULL == p_node)
+	{
+		goto END;
+	}
+
+	p_smallest = p_node;
+
+	while (NULL != p_node->p_left)
+	{
+		p_smallest = p_smallest->p_left;
+	}
+
+END:
+	return p_smallest;
+
+}
 // end of bst.c
