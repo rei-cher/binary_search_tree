@@ -92,18 +92,31 @@ int bst_insert(bst_t * p_bst, void * p_data)
 	{
 		goto END;
 	}
+
+	if (NULL == p_bst->p_root)
+	{
+		p_bst->p_root->p_data = p_data;
+		p_bst->p_root->p_left = NULL;
+		p_bst->p_root->p_right = NULL;
+
+		p_bst->size++;
+
+		SUCCESS = 0;
+		goto END;
+	}
 	
 	node_t * p_tmp = NULL;
 	node_t * p_current = p_bst->p_root;
 
 	while (NULL != p_current)
 	{
-		if (p_current->p_data > p_data)
+		if (0 < p_bst->p_comp(p_current->p_data, p_data))
 		{
 			p_tmp = p_current;
 			p_current = p_current->p_left;
 		}
-		else
+
+		if (0 > p_bst->p_comp(p_current->p_data, p_data))
 		{
 			p_tmp = p_current;
 			p_current = p_current->p_right;
@@ -118,6 +131,8 @@ int bst_insert(bst_t * p_bst, void * p_data)
 	{
 		insert_right(p_tmp, p_data);
 	}
+	
+	p_bst->size++;
 
 	SUCCESS = 0;
 	
