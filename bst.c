@@ -123,7 +123,7 @@ int bst_insert(bst_t * p_bst, void * p_data)
 		}
 	}
 
-	if (p_tmp->p_data > p_data)
+	if (0 < p_bst->p_comp(p_current->p_data, p_data))
 	{
 		insert_left(p_tmp, p_data);
 	}
