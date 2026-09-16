@@ -33,7 +33,7 @@ struct bst
 // TODO: static function prototypes here
 static node_t * node_find(node_t * p_root, void * p_data);
 static node_t * find_smallest(node_t * p_node);
-static node_t * remove_node(node_t * p_node, void * p_data);
+static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data);
 static void insert_left(node_t * p_node, void * p_data);
 static void insert_right(node_t * p_node, void * p_data);
 
@@ -87,17 +87,26 @@ int bst_insert(bst_t * p_bst, void * p_data)
 	int SUCCESS = 1;
 
 	if ((NULL == p_bst) ||
-		(NULL == p_data) ||
-		(NULL != node_find(p_bst->p_root, p_data)))
+		(NULL == p_data))// ||
+		//(NULL != node_find(p_bst->p_root, p_data)))
 	{
 		goto END;
 	}
 
 	if (NULL == p_bst->p_root)
 	{
-		p_bst->p_root->p_data = p_data;
-		p_bst->p_root->p_left = NULL;
-		p_bst->p_root->p_right = NULL;
+		node_t * p_new_node = calloc(1, sizeof(node_t));
+	
+		if (NULL == p_new_node)
+		{
+			goto END;
+		}
+
+		p_new_node->p_data = p_data;
+		p_new_node->p_left = NULL;
+		p_new_node->p_right = NULL;
+
+		p_bst->p_root = p_new_node;
 
 		p_bst->size++;
 
@@ -110,20 +119,23 @@ int bst_insert(bst_t * p_bst, void * p_data)
 
 	while (NULL != p_current)
 	{
+		p_tmp = p_current;
+
 		if (0 < p_bst->p_comp(p_current->p_data, p_data))
 		{
-			p_tmp = p_current;
 			p_current = p_current->p_left;
 		}
-
-		if (0 > p_bst->p_comp(p_current->p_data, p_data))
+		else if (0 > p_bst->p_comp(p_current->p_data, p_data))
 		{
-			p_tmp = p_current;
 			p_current = p_current->p_right;
+		}
+		else
+		{
+			goto END;
 		}
 	}
 
-	if (0 < p_bst->p_comp(p_current->p_data, p_data))
+	if (0 < p_bst->p_comp(p_tmp->p_data, p_data))
 	{
 		insert_left(p_tmp, p_data);
 	}
@@ -151,7 +163,11 @@ void * bst_remove(bst_t * p_bst, void * p_data)
 		goto END;
 	}
 
-	p_removed = remove_node(p_bst->p_root, p_data);
+	p_removed = remove_node(p_bst, p_bst->p_root, p_data);
+	if (NULL != p_removed)
+	{
+		p_bst->size--;
+	}
 
 END:
 	return p_removed;
@@ -177,42 +193,35 @@ int bst_size(bst_t * p_bst)
 }
 
 // TODO: static function definitions here
-static node_t * remove_node(node_t * p_node, void * p_data)
+static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data)
 {
 	node_t * p_removed = NULL;
 
-	if ((NULL == p_node) ||
-		(NULL == p_data))
+	if (0 < p_bst->p_comp(p_node->p_data, p_data))
 	{
-		goto END;
+		p_node->p_left = remove_node(p_bst, p_node->p_left, p_data);
 	}
-
-	if (p_data < p_node->p_data)
+	else if (0 > p_bst->p_comp(p_node->p_data, p_data))
 	{
-		p_node->p_left = remove_node(p_node->p_left, p_data);
-	}
-	else if (p_data > p_node->p_data)
-	{
-		p_node->p_right = remove_node(p_node->p_right, p_data);
+		p_node->p_right = remove_node(p_bst, p_node->p_right, p_data);
 	}
 	else
 	{
-		p_removed = p_node;
-		
 		if (NULL == p_node->p_left)
 		{
-			p_node = p_node->p_right;
+			p_removed = p_node->p_right;
+			goto END;
 		}
-		else if (NULL == p_node->p_right)
+
+		if (NULL == p_node->p_right)
 		{
-			p_node = p_node->p_left;
+			p_removed = p_node->p_left;
+			goto END;
 		}
-		else
-		{
-			p_node = find_smallest(p_node->p_right);
-			p_node->p_right = p_removed->p_right;
-			p_node->p_left = p_removed->p_left;
-		}
+
+		node_t * p_smallest = find_smallest(p_node->p_right);
+		p_node->p_data = p_smallest->p_data;
+		p_node->p_right = remove_node(p_bst, p_node->p_right, p_smallest->p_data);
 	}
 
 END:
@@ -317,7 +326,7 @@ static node_t * find_smallest(node_t * p_node)
 
 	p_smallest = p_node;
 
-	while (NULL != p_node->p_left)
+	while (NULL != p_smallest->p_left)
 	{
 		p_smallest = p_smallest->p_left;
 	}
