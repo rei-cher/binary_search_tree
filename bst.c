@@ -31,11 +31,12 @@ struct bst
 };
 
 // TODO: static function prototypes here
-static node_t * node_find(node_t * p_root, void * p_data);
+static node_t * node_find(bst_t * p_bst, node_t * p_root, void * p_data);
 static node_t * find_smallest(node_t * p_node);
-static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data);
+static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data, void ** pp_removed);
 static void insert_left(node_t * p_node, void * p_data);
 static void insert_right(node_t * p_node, void * p_data);
+static void print_order(node_t * p_node, print_f p_print);
 
 bst_t * bst_create(comp_f p_comp, free_f p_free)
 {
@@ -87,8 +88,7 @@ int bst_insert(bst_t * p_bst, void * p_data)
 	int SUCCESS = 1;
 
 	if ((NULL == p_bst) ||
-		(NULL == p_data))// ||
-		//(NULL != node_find(p_bst->p_root, p_data)))
+		(NULL == p_data))
 	{
 		goto END;
 	}
@@ -154,7 +154,7 @@ END:
 
 void * bst_remove(bst_t * p_bst, void * p_data)
 {
-	node_t * p_removed = NULL;
+	void * p_removed = NULL;
 
 	if ((NULL == p_bst) ||
 		(NULL == p_data) ||
@@ -163,7 +163,8 @@ void * bst_remove(bst_t * p_bst, void * p_data)
 		goto END;
 	}
 
-	p_removed = remove_node(p_bst, p_bst->p_root, p_data);
+	p_bst->p_root = remove_node(p_bst, p_bst->p_root, p_data, &p_removed);
+	
 	if (NULL != p_removed)
 	{
 		p_bst->size--;
@@ -175,91 +176,153 @@ END:
 
 void bst_inorder_print(bst_t * p_bst, print_f p_print)
 {
-    (void)p_bst;
-    (void)p_print;
+	if ((NULL == p_bst) ||
+		(NULL == p_bst->p_root))
+	{
+		goto END;
+	}
+
+	print_order(p_bst->p_root, p_print);
+
+END:
+	return;
+}
+
+static void print_order(node_t * p_node, print_f p_print)
+{
+	if (NULL == p_node)
+	{
+		goto END;
+	}
+
+	print_order(p_node->p_left, p_print);
+	p_print(p_node->p_data);
+	print_order(p_node->p_right, p_print);
+
+END:
+	return;
 }
 
 int bst_search(bst_t * p_bst, void * p_data)
 {
-    (void)p_bst;
-    (void)p_data;
-    return EXIT_FAILURE;
+	int SUCCESS = 1;
+
+	if ((NULL == p_bst) ||
+		(NULL == p_data) ||
+		(NULL == p_bst->p_root) ||
+		(NULL == node_find(p_bst, p_bst->p_root, p_data)))
+	{
+		goto END;
+	}
+	
+	SUCCESS = 0;
+
+END:
+	return SUCCESS;
 }
 
 int bst_size(bst_t * p_bst)
 {
-    (void)p_bst;
-    return EXIT_FAILURE;
+	int size = 0;
+
+	if ((NULL == p_bst) ||
+		(NULL == p_bst->p_root))
+	{
+		goto END;
+	}
+
+	size = p_bst->size;
+
+END:
+	return size;
 }
 
 // TODO: static function definitions here
-static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data)
+static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data, void ** pp_removed)
 {
-	node_t * p_removed = NULL;
+	if ((NULL == p_bst) ||
+		(NULL == p_node) ||
+		(NULL == p_data) ||
+		(NULL == pp_removed))
+	{
+		goto END;
+	}
 
 	if (0 < p_bst->p_comp(p_node->p_data, p_data))
 	{
-		p_node->p_left = remove_node(p_bst, p_node->p_left, p_data);
+		p_node->p_left = remove_node(p_bst, 
+									 p_node->p_left, 
+									 p_data, 
+									 pp_removed);
 	}
 	else if (0 > p_bst->p_comp(p_node->p_data, p_data))
 	{
-		p_node->p_right = remove_node(p_bst, p_node->p_right, p_data);
+		p_node->p_right = remove_node(p_bst, 
+									  p_node->p_right, 
+									  p_data, 
+									  pp_removed);
 	}
 	else
 	{
+		(* pp_removed) = p_node->p_data;
+
 		if (NULL == p_node->p_left)
 		{
-			p_removed = p_node->p_right;
+			node_t * p_right = p_node->p_right;
+			free(p_node);
+			p_node = p_right;
 			goto END;
 		}
 
 		if (NULL == p_node->p_right)
 		{
-			p_removed = p_node->p_left;
+			node_t * p_left = p_node->p_left;
+			free(p_node);
+			p_node = p_left;
 			goto END;
 		}
 
 		node_t * p_smallest = find_smallest(p_node->p_right);
 		p_node->p_data = p_smallest->p_data;
-		p_node->p_right = remove_node(p_bst, p_node->p_right, p_smallest->p_data);
+		
+		void * p_tmp = NULL;
+		
+		p_node->p_right = remove_node(p_bst, p_node->p_right, p_smallest->p_data, &p_tmp);
 	}
 
 END:
-	return p_removed;
+	return p_node;
 }
 
-static node_t * node_find(node_t * p_root, void * p_data)
+static node_t * node_find(bst_t * p_bst, node_t * p_node, void * p_data)
 {
     node_t * p_found = NULL;
 	
-	if ((NULL == p_root) ||
+	if ((NULL == p_bst) ||
+		(NULL == p_node) ||
 		(NULL == p_data))
 	{
 		goto END;
 	}
 	
-	node_t * p_current = p_root;
+	node_t * p_current = p_node;
 
-	if (p_current->p_data == p_data)
+	if (0 < p_bst->p_comp(p_node->p_data, p_data))
+	{
+		p_current = p_current->p_left;
+	}
+	else if (0 > p_bst->p_comp(p_node->p_data, p_data))
+	{
+		p_current = p_current->p_right;
+	}
+	else
 	{
 		p_found = p_current;
 		goto END;
 	}
+	
+	p_found = node_find(p_bst, p_current, p_data);
 
-	if (p_current->p_data > p_data)
-	{
-		p_current = p_current->p_left;
-	}
-	else
-	{
-		p_current = p_current->p_right;
-	}
-
-	while ((NULL == p_found) ||
-		   (NULL == p_current))
-	{
-		node_find(p_current, p_data);
-	}
 
 END:
 	return p_found;
