@@ -31,11 +31,64 @@ struct bst
 };
 
 // TODO: static function prototypes here
+
+/**
+ * @brief Helper function to find the node in the tree
+ *
+ * @param p_bst
+ * @param p_root
+ * @param p_data
+ *
+ * @return Returns the pointer to the found node, otherwise NULL
+ */
 static node_t * node_find(bst_t * p_bst, node_t * p_root, void * p_data);
+
+/**
+ * @brief Helper function to find the smallest node in the tree from
+ * 			the given point in the tree
+ *
+ * @param p_node
+ *
+ * @return Returns pointer to the found smallest node
+ */
 static node_t * find_smallest(node_t * p_node);
-static node_t * remove_node(bst_t * p_bst, node_t * p_node, void * p_data, void ** pp_removed);
+
+/**
+ * @brief Helper function to remove the node from the tree
+ *
+ * @param p_bst
+ * @param p_node
+ * @param p_data
+ * @param pp_removed
+ *
+ * @return Return the pointer to the node that suppose to replace removed node
+ */
+static node_t * remove_node(bst_t * p_bst, 
+							node_t * p_node, 
+							void * p_data, 
+							void ** pp_removed);
+/**
+ * @brief Inserts node to the left side of the previous node
+ *
+ * @param p_node
+ * @param p_data
+ */
 static void insert_left(node_t * p_node, void * p_data);
+
+/**
+ * @brief Inserts node to the right side of the previous node
+ *
+ * @param p_node
+ * @param p_data
+ */
 static void insert_right(node_t * p_node, void * p_data);
+
+/**
+ * @brief Helper function to print the tree nodes in order
+ *
+ * @param p_node
+ * @param p_print
+ */
 static void print_order(node_t * p_node, print_f p_print);
 
 bst_t * bst_create(comp_f p_comp, free_f p_free)
